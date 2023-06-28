@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\GAME\Ajuna.AAA.Tools\Substrate.AjunaSolo.NET.NetApiExt\Substrate.AjunaSolo.NET.NetApiExt.csproj" />
+    <ProjectReference Include="..\Substrate.AjunaSolo.NET.NetApiExt\Substrate.AjunaSolo.NET.NetApiExt.csproj" />
   </ItemGroup>
 
   <ItemGroup>
