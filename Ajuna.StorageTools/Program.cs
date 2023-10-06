@@ -2,16 +2,14 @@
 using Ajuna.StorageTools.Helper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Yaml;
-using Newtonsoft.Json.Linq;
+using Schnorrkel.Keys;
 using Serilog;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.ajuna_solo_runtime;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Storage;
 using Substrate.NetApi;
+using Substrate.NetApi.Model.Types;
 using Substrate.NetApi.Model.Types.Base;
 using Substrate.NetApi.Model.Types.Primitive;
-using System.Collections.Generic;
-using System.Diagnostics;
-using YamlDotNet.Core.Tokens;
+using Substrate.Tanssi.NET.NetApiExt.Generated.Model.container_chain_template_simple_runtime;
+using Substrate.Tanssi.NET.NetApiExt.Generated.Storage;
 
 namespace Ajuna.StorageTools
 {
@@ -59,26 +57,28 @@ namespace Ajuna.StorageTools
 
         private static async Task MainAsync(IConfigurationRoot config, CancellationToken token)
         {
-            var modules = new string[] { 
-                "AwesomeAvatars", 
+            var modules = new string[] {
+                "AwesomeAvatars",
                 "Identity"
             };
 
-            foreach (var module in modules) 
-            { 
+            foreach (var module in modules)
+            {
                 Log.Information("Module: {0}", module);
 
                 List<(string, string)> allPagesSource = await GetStorageOfSourceAsync(config["node:source"], module, token);
 
                 Thread.Sleep(3000);
 
-                await CloneStorageToTargetAsync(config["node:target"], allPagesSource, token);
+                var miniSecret = new MiniSecret(Utils.HexToByteArray(config["seed:crea"]), ExpandMode.Ed25519);
+                var sudoAccount = Account.Build(KeyType.Sr25519, miniSecret.ExpandToSecret().ToBytes(), miniSecret.GetPair().Public.Key);
+                //var sudoAccount = TargetClient.Alice;
+                await CloneStorageToTargetAsync(sudoAccount, config["node:target"], allPagesSource, token);
 
                 Thread.Sleep(10000);
 
                 _ = await GetStorageOfTargetAsync(config["node:target"], module, token);
             }
-
         }
 
         private static async Task<List<(string, string)>> GetStorageOfSourceAsync(string url, string module, CancellationToken token)
@@ -141,9 +141,9 @@ namespace Ajuna.StorageTools
             return allPages;
         }
 
-        private static async Task CloneStorageToTargetAsync(string url, List<(string, string)> allPagesSource, CancellationToken token)
+        private static async Task CloneStorageToTargetAsync(Account sudoAccount, string url, List<(string, string)> allPagesSource, CancellationToken token)
         {
-            var batches = Generic.BuildChunksWithLinqAndYield(allPagesSource, 1000);
+            var batches = Generic.BuildChunksWithLinqAndYield(allPagesSource, 500);
 
             var targetClient = new TargetClient(url, 100);
             await targetClient.ConnectAsync(true, true, token);
@@ -172,15 +172,15 @@ namespace Ajuna.StorageTools
                 var setStorage = new BaseVec<BaseTuple<BaseVec<U8>, BaseVec<U8>>>();
                 setStorage.Create(baseTupleList.ToArray());
 
-                var call = new Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
-                call.Create(Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
+                var call = new Substrate.Tanssi.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
+                call.Create(Substrate.Tanssi.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
 
                 var enumCall = new EnumRuntimeCall();
                 enumCall.Create(RuntimeCall.System, call);
 
                 var extrinsic = SudoCalls.Sudo(enumCall);
 
-                var subscriptionId = await targetClient.GenericExtrinsicAsync(TargetClient.Alice, "SetStorage", extrinsic, 50, token);
+                var subscriptionId = await targetClient.GenericExtrinsicAsync(sudoAccount, "SetStorage", extrinsic, 50, token);
                 if (subscriptionId == null)
                 {
                     Log.Warning("{0}: subscriptionId is null.", "Target");

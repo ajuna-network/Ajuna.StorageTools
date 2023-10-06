@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Substrate.AjunaSolo.NET.NetApiExt\Substrate.AjunaSolo.NET.NetApiExt.csproj" />
+    <ProjectReference Include="..\Substrate.Tanssi.NET.NetApiExt\Substrate.Tanssi.NET.NetApiExt.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,16 +3,16 @@ using Ajuna.StorageTools.Helper;
 using Schnorrkel.Keys;
 using Serilog;
 using StreamJsonRpc;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.ajuna_solo_runtime;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.sp_core.crypto;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Storage;
+using Substrate.Tanssi.NET.NetApiExt.Generated;
+using Substrate.Tanssi.NET.NetApiExt.Generated.Model.sp_core.crypto;
+using Substrate.Tanssi.NET.NetApiExt.Generated.Storage;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Extrinsics;
 using Substrate.NetApi.Model.Meta;
 using Substrate.NetApi.Model.Types;
 using Substrate.NetApi.Model.Types.Base;
 using Substrate.NetApi.Model.Types.Primitive;
+using Substrate.Tanssi.NET.NetApiExt.Generated.Model.container_chain_template_simple_runtime;
 
 namespace Ajuna.StorageTools.Client
 {
@@ -35,12 +35,14 @@ namespace Ajuna.StorageTools.Client
 
         public TargetClient(string url, int maxConcurrentCalls = 10)
         {
-            //_chargeTypeDefault = ChargeTransactionPayment.Default();
-            _chargeTypeDefault = ChargeAssetTxPayment.Default();
+            _chargeTypeDefault = ChargeTransactionPayment.Default();
+            //_chargeTypeDefault = ChargeAssetTxPayment.Default();
 
             _maxConcurrentCalls = maxConcurrentCalls;
 
-            SubstrateClient = new SubstrateClientExt(new Uri(url), _chargeTypeDefault);
+            var uri = new Uri(url);
+
+            SubstrateClient = new SubstrateClientExt(uri, _chargeTypeDefault);
 
             ExtrinsicManger = new ExtrinsicManager();
 
@@ -225,8 +227,8 @@ namespace Ajuna.StorageTools.Client
             var baseTupleArray = keyValuePairs.Select((p) => new BaseTuple<BaseVec<U8>, BaseVec<U8>>(new BaseVec<U8>(p.Item1.ToU8Array()), new BaseVec<U8>(p.Item2.ToU8Array()))).ToArray();
             var setStorage = new BaseVec<BaseTuple<BaseVec<U8>, BaseVec<U8>>>(baseTupleArray);
 
-            var call = new Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
-            call.Create(Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
+            var call = new Substrate.Tanssi.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
+            call.Create(Substrate.Tanssi.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
 
             var enumCall = new EnumRuntimeCall();
             enumCall.Create(RuntimeCall.System, call);
