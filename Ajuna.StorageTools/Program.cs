@@ -67,15 +67,15 @@ namespace Ajuna.StorageTools
             foreach (var module in modules) 
             { 
                 Log.Information("Module: {0}", module);
-
                 List<(string, string)> allPagesSource = await GetStorageOfSourceAsync(config["node:source"], module, token);
 
-                Thread.Sleep(3000);
+                Log.Information("Waiting to execute set storage on target!");
+                Thread.Sleep(10000);
 
                 await CloneStorageToTargetAsync(config["node:target"], allPagesSource, token);
 
+                Log.Information("Waiting to control with get storage on target!");
                 Thread.Sleep(10000);
-
                 _ = await GetStorageOfTargetAsync(config["node:target"], module, token);
             }
 
@@ -83,7 +83,7 @@ namespace Ajuna.StorageTools
 
         private static async Task<List<(string, string)>> GetStorageOfSourceAsync(string url, string module, CancellationToken token)
         {
-            var client = new SourceClient(url, 10);
+            var client = new SourceClient(url, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Source", url, client.IsConnected);
 
@@ -113,7 +113,7 @@ namespace Ajuna.StorageTools
 
         private static async Task<List<(string, string)>> GetStorageOfTargetAsync(string url, string module, CancellationToken token)
         {
-            var client = new TargetClient(url, 10);
+            var client = new TargetClient(url, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Target", url, client.IsConnected);
 
@@ -180,7 +180,7 @@ namespace Ajuna.StorageTools
 
                 var extrinsic = SudoCalls.Sudo(enumCall);
 
-                var subscriptionId = await targetClient.GenericExtrinsicAsync(TargetClient.Alice, "SetStorage", extrinsic, 50, token);
+                var subscriptionId = await targetClient.GenericExtrinsicAsync(TargetClient.Alice, "SetStorage", extrinsic, 100, token);
                 if (subscriptionId == null)
                 {
                     Log.Warning("{0}: subscriptionId is null.", "Target");
@@ -189,8 +189,8 @@ namespace Ajuna.StorageTools
 
                 while (targetClient.ExtrinsicManger.PreInblock.Count() > 25)
                 {
-                    //Log.Information("{0}: waiting on extrinsic to be in block.", "Target");
-                    await Task.Delay(1000);
+                    Log.Information("{0}: waiting on extrinsic to be in block.", "Target");
+                    await Task.Delay(10000);
                 }
             }
 
