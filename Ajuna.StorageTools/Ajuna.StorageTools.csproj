@@ -8,13 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Substrate.Bajun.NET.Extension" Version="1.117.1" />
 	<PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Yaml" Version="2.0.0-preview2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Substrate.AjunaSolo.NET.NetApiExt\Substrate.AjunaSolo.NET.NetApiExt.csproj" />
+    <ProjectReference Include="..\Substrate.Bajun.NET.NetApiExt\Substrate.Bajun.NET.NetApiExt.csproj" />
+    <ProjectReference Include="..\Substrate.TestNode.NET.NetApiExt\Substrate.TestNode.NET.NetApiExt.csproj" />
   </ItemGroup>
 
   <ItemGroup>

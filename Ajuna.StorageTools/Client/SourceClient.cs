@@ -1,12 +1,19 @@
-﻿using Schnorrkel.Keys;
+﻿using Substrate.NET.Schnorrkel.Keys;
 using Serilog;
 using StreamJsonRpc;
 using Substrate.Bajun.NET.NetApiExt.Generated;
+using Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system;
 using Substrate.Bajun.NET.NetApiExt.Generated.Storage;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Extrinsics;
 using Substrate.NetApi.Model.Types;
 using System.Text;
+using Substrate.Integration.Client;
+using Substrate.Integration.Helper;
+using Substrate.NetApi.Model.Rpc;
+using Substrate.NetApi.Model.Types.Base;
+using Substrate.NetApi.Model.Types.Primitive;
+using System.ComponentModel.Design;
 
 namespace Ajuna.StorageTools.Client
 {
@@ -16,33 +23,66 @@ namespace Ajuna.StorageTools.Client
 
         private readonly ChargeType _chargeTypeDefault;
 
-        public static MiniSecret MiniSecretAlice => new MiniSecret(Utils.HexToByteArray("0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"), ExpandMode.Ed25519);
+        private static MiniSecret MiniSecretAlice => new MiniSecret(Utils.HexToByteArray("0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"), ExpandMode.Ed25519);
+
+        /// <summary>
+        /// Alice account
+        /// </summary>
         public static Account Alice => Account.Build(KeyType.Sr25519, MiniSecretAlice.ExpandToSecret().ToBytes(), MiniSecretAlice.GetPair().Public.Key);
 
-        public ExtrinsicManager ExtrinsicManger { get; }
+        /// <summary>
+        /// Extrinsic manager, used to manage extrinsic subscriptions and the corresponding states.
+        /// </summary>
+        public SourceExtrinsicManager ExtrinsicManager { get; }
 
+        /// <summary>
+        /// Subscription manager, used to manage subscriptions of storage elements.
+        /// </summary>
         public SubscriptionManager SubscriptionManager { get; }
 
+        /// <summary>
+        /// Substrate Extension Client
+        /// </summary>
         public SubstrateClientExt SubstrateClient { get; }
 
+        /// <summary>
+        /// Is connected to the network
+        /// </summary>
         public bool IsConnected => SubstrateClient.IsConnected;
 
-        public SourceClient(string url, int maxConcurrentCalls = 10)
+        /// <summary>
+        /// Network type
+        /// </summary>
+        public NetworkType NetworkType { get; set; }
+
+        /// <summary>
+        /// Base Client Constructor
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="networkType"></param>
+        /// <param name="maxConcurrentCalls"></param>
+        public SourceClient(string url, NetworkType networkType, int maxConcurrentCalls = 10)
         {
-            _chargeTypeDefault = ChargeTransactionPayment.Default();
-            //_chargeTypeDefault = ChargeAssetTxPayment.Default();
+            if (networkType == NetworkType.Host || networkType == NetworkType.Test)
+            {
+                _chargeTypeDefault = ChargeAssetTxPayment.Default();
+            }
+            else
+            {
+                _chargeTypeDefault = ChargeTransactionPayment.Default();
+            }
 
             _maxConcurrentCalls = maxConcurrentCalls;
 
             SubstrateClient = new SubstrateClientExt(new Uri(url), _chargeTypeDefault);
 
-            ExtrinsicManger = new ExtrinsicManager();
+            ExtrinsicManager = new SourceExtrinsicManager(SubstrateClient);
 
             SubscriptionManager = new SubscriptionManager();
         }
 
         /// <summary>
-        ///
+        /// Connect to the network
         /// </summary>
         /// <param name="useMetadata"></param>
         /// <param name="standardSubstrate"></param>
@@ -66,6 +106,10 @@ namespace Ajuna.StorageTools.Client
             return IsConnected;
         }
 
+        /// <summary>
+        /// Disconnect from the network
+        /// </summary>
+        /// <returns></returns>
         public async Task<bool> DisconnectAsync()
         {
             if (!IsConnected)
@@ -78,7 +122,32 @@ namespace Ajuna.StorageTools.Client
         }
 
         /// <summary>
-        ///
+        /// Check if extrinsic can be sent
+        /// </summary>
+        /// <param name="extrinsicType"></param>
+        /// <param name="concurrentTasks"></param>
+        /// <returns></returns>
+        public bool CanExtrinsic(string extrinsicType, int concurrentTasks)
+            => IsConnected && !HasMaxConcurentTaskRunning() && !HasToManyConcurentTaskRunning(extrinsicType, concurrentTasks);
+
+        /// <summary>
+        /// Check if we have maximum of concurrent tasks running reached
+        /// </summary>
+        /// <returns></returns>
+        public bool HasMaxConcurentTaskRunning()
+            => ExtrinsicManager.Running.Count() >= _maxConcurrentCalls;
+
+        /// <summary>
+        /// Check if we have maximum of concurrent tasks running reached
+        /// </summary>
+        /// <param name="extrinsicType"></param>
+        /// <param name="concurrentTasks"></param>
+        /// <returns></returns>
+        public bool HasToManyConcurentTaskRunning(string extrinsicType, int concurrentTasks)
+            => ExtrinsicManager.Running.Count(p => p.ExtrinsicType == extrinsicType) >= concurrentTasks;
+
+        /// <summary>
+        /// Generic extrinsic sender
         /// </summary>
         /// <param name="extrinsicType"></param>
         /// <param name="extrinsicMethod"></param>
@@ -99,13 +168,13 @@ namespace Ajuna.StorageTools.Client
                 return null;
             }
 
-            if (ExtrinsicManger.Running.Count() >= _maxConcurrentCalls)
+            if (HasMaxConcurentTaskRunning())
             {
                 Log.Warning("There can not be more then {0} concurrent tasks overall!", _maxConcurrentCalls);
                 return null;
             }
 
-            if (ExtrinsicManger.Running.Count(p => p.ExtrinsicType == extrinsicType) >= concurrentTasks)
+            if (HasToManyConcurentTaskRunning(extrinsicType, concurrentTasks))
             {
                 Log.Warning("There can not be more then {0} concurrent tasks of {1}!", concurrentTasks, extrinsicType);
                 return null;
@@ -114,7 +183,7 @@ namespace Ajuna.StorageTools.Client
             string subscription = null;
             try
             {
-                subscription = await SubstrateClient.Author.SubmitAndWatchExtrinsicAsync(ExtrinsicManger.ActionExtrinsicUpdate, extrinsicMethod, account, _chargeTypeDefault, 64, token);
+                subscription = await SubstrateClient.Unstable.TransactionUnstableSubmitAndWatchAsync(ActionExtrinsicUpdate, extrinsicMethod, account, _chargeTypeDefault, 64, token);
             }
             catch (RemoteInvocationException e)
             {
@@ -129,45 +198,40 @@ namespace Ajuna.StorageTools.Client
 
             Log.Debug("Generic extrinsic sent {0} with {1}.", extrinsicMethod.ModuleName + "_" + extrinsicMethod.CallName, subscription);
 
-            ExtrinsicManger.Add(subscription, extrinsicType);
-            return subscription;
-        }
-
-        public async Task<string> SubscribeEventsAsync(CancellationToken token)
-        {
-            if (!IsConnected)
-            {
-                Log.Warning("Currently not connected to the network!");
-                return null;
-            }
-
-            if (SubscriptionManager.IsSubscribed)
-            {
-                Log.Warning("Already active subscription to events!");
-                return null;
-            }
-
-            var subscription = await SubstrateClient.SubscribeStorageKeyAsync(SystemStorage.EventsParams(), SubscriptionManager.ActionSubscrptionEvent, token);
-            if (subscription == null)
-            {
-                return null;
-            }
-
-            SubscriptionManager.IsSubscribed = true;
-
-            Log.Debug("SystemStorage.Events subscription id {0] registred.", subscription);
+            ExtrinsicManager.Add(subscription, extrinsicType);
 
             return subscription;
         }
 
-        public static Account RandomAccount(int seed, string derivationPsw = "aA1234dd", KeyType keyType = KeyType.Sr25519)
+        /// <summary>
+        /// Callback for extrinsic update
+        /// </summary>
+        /// <param name="subscriptionId"></param>
+        /// <param name="extrinsicUpdate"></param>
+        public async void ActionExtrinsicUpdate(string subscriptionId, TransactionEventInfo extrinsicUpdate)
         {
-            var random = new Random(seed);
-            var randomBytes = new byte[16];
-            random.NextBytes(randomBytes);
-            var mnemonic = string.Join(" ", Mnemonic.MnemonicFromEntropy(randomBytes, Mnemonic.BIP39Wordlist.English));
-            Log.Information("mnemonic[Sr25519]: {0}", mnemonic);
-            return Mnemonic.GetAccountFromMnemonic(mnemonic, derivationPsw, keyType);
+            ExtrinsicManager.UpdateExtrinsicInfo(subscriptionId, extrinsicUpdate);
+
+            var queueInfo = ExtrinsicManager.Get(subscriptionId);
+
+            // proccessing events scrapping
+            if (queueInfo != null && !queueInfo.HasEvents && extrinsicUpdate.Hash != null && extrinsicUpdate.Index != null)
+            {
+                string parameters = SystemStorage.EventsParams();
+                var events = await SubstrateClient.GetStorageAsync<BaseVec<EventRecord>>(parameters, extrinsicUpdate.Hash.Value, CancellationToken.None);
+                if (events == null)
+                {
+                    ExtrinsicManager.UpdateExtrinsicError(subscriptionId, "No block events");
+                    return;
+                }
+                var allExtrinsicEvents = events.Value.Where(p => p.Phase.Value == Phase.ApplyExtrinsic && ((U32)p.Phase.Value2).Value == extrinsicUpdate.Index);
+                if (!allExtrinsicEvents.Any())
+                {
+                    ExtrinsicManager.UpdateExtrinsicError(subscriptionId, "No extrinsic events");
+                    return;
+                }
+                ExtrinsicManager.UpdateExtrinsicEvents(subscriptionId, allExtrinsicEvents);
+            }
         }
 
         /// <summary>
@@ -180,7 +244,7 @@ namespace Ajuna.StorageTools.Client
         /// <param name="token"></param>
         /// <returns></returns>
         /// <exception cref="NotSupportedException"></exception>
-        public async Task<List<(string, string)>?> GetAllStoragePagedAsync(string module, byte[] startKey, uint page, string blockHash, CancellationToken token)
+        public async Task<List<(string, string)>?> GetAllStoragePagedAsync(string module, string? method, byte[]? startKey, uint page, string? blockHash, CancellationToken token)
         {
             if (!SubstrateClient.IsConnected)
             {
@@ -194,7 +258,9 @@ namespace Ajuna.StorageTools.Client
 
             var result = new List<(string, string)>();
 
-            var keyBytes = HashExtension.Twox128(Encoding.ASCII.GetBytes(module));
+            byte[]? keyBytes = method == null
+                ? HashExtension.Twox128(Encoding.ASCII.GetBytes(module))
+                : RequestGenerator.GetStorageKeyBytesHash(module, method);
 
             var storageKeys = await SubstrateClient.State.GetKeysPagedAsync(keyBytes, page, startKey, token);
             if (storageKeys == null || !storageKeys.Any())

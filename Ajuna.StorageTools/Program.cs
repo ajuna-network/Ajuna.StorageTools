@@ -2,16 +2,13 @@
 using Ajuna.StorageTools.Helper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Yaml;
-using Newtonsoft.Json.Linq;
 using Serilog;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.ajuna_solo_runtime;
-using Substrate.AjunaSolo.NET.NetApiExt.Generated.Storage;
+using Substrate.Integration.Helper;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Types.Base;
 using Substrate.NetApi.Model.Types.Primitive;
-using System.Collections.Generic;
-using System.Diagnostics;
-using YamlDotNet.Core.Tokens;
+using Substrate.TestNode.NET.NetApiExt.Generated.Model.bajun_runtime;
+using Substrate.TestNode.NET.NetApiExt.Generated.Storage;
 
 namespace Ajuna.StorageTools
 {
@@ -59,15 +56,26 @@ namespace Ajuna.StorageTools
 
         private static async Task MainAsync(IConfigurationRoot config, CancellationToken token)
         {
-            var modules = new string[] { 
-                "AwesomeAvatars", 
-                "Identity"
+            var modules = new List<string[]> {
+//                new string [] {"AwesomeAvatars" },
+//                new string [] {"System", "Account" },
+                new string [] { "Identity" },
             };
 
-            foreach (var module in modules) 
-            { 
-                Log.Information("Module: {0}", module);
-                List<(string, string)> allPagesSource = await GetStorageOfSourceAsync(config["node:source"], module, token);
+            string sourceUrl = config["node:source"];
+
+            var client = new SourceClient(sourceUrl, NetworkType.Live, 100);
+            await client.ConnectAsync(true, true, token);
+            var block = await client.SubstrateClient.Chain.GetBlockAsync();
+            var blockHash = block.Block.Header.ParentHash.Value;
+            Log.Information("Block: {0}, Parent Hash: {1}", block.Block.Header.Number.Value, blockHash);
+
+            await client.DisconnectAsync();
+
+            foreach (var moduleMethod in modules)
+            {
+                Log.Information("Module: {0}", string.Join("-", moduleMethod));
+                List<(string, string)> allPagesSource = await GetStorageOfSourceAsync(sourceUrl, moduleMethod, blockHash, token);
 
                 Log.Information("Waiting to execute set storage on target!");
                 Thread.Sleep(10000);
@@ -76,32 +84,30 @@ namespace Ajuna.StorageTools
 
                 Log.Information("Waiting to control with get storage on target!");
                 Thread.Sleep(10000);
-                _ = await GetStorageOfTargetAsync(config["node:target"], module, token);
+                _ = await GetStorageOfTargetAsync(config["node:target"], moduleMethod, null, token);
             }
-
         }
 
-        private static async Task<List<(string, string)>> GetStorageOfSourceAsync(string url, string module, CancellationToken token)
+        private static async Task<List<(string, string)>> GetStorageOfSourceAsync(string url, string[] moduleMethod, string? blockHash, CancellationToken token)
         {
-            var client = new SourceClient(url, 100);
+            var client = new SourceClient(url, NetworkType.Live, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Source", url, client.IsConnected);
 
-            string blockHashSource = null;
-            byte[] startKeySource = null;
+            byte[]? startKeySource = null;
 
             List<(string, string)> allPages = new();
 
             while (true)
             {
-                var page = await client.GetAllStoragePagedAsync(module, startKeySource, 1000, blockHashSource, token);
+                var page = await client.GetAllStoragePagedAsync(moduleMethod[0], moduleMethod.Length == 2 ? moduleMethod[1] : null, startKeySource, 1000, blockHash, token);
                 if (page == null || page.Count == 0)
                 {
                     break;
                 }
 
                 allPages.AddRange(page);
-                startKeySource = Utils.HexToByteArray(page.Last().Item1);
+                startKeySource = Utils.HexToByteArray(page[page.Count - 1].Item1);
             }
 
             Log.Information("{0}: Parsed {1} entries!", "Source", allPages.Count);
@@ -111,27 +117,26 @@ namespace Ajuna.StorageTools
             return allPages;
         }
 
-        private static async Task<List<(string, string)>> GetStorageOfTargetAsync(string url, string module, CancellationToken token)
+        private static async Task<List<(string, string)>> GetStorageOfTargetAsync(string url, string[] moduleMethod, string? blockHash, CancellationToken token)
         {
-            var client = new TargetClient(url, 100);
+            var client = new TargetClient(url, NetworkType.Live, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Target", url, client.IsConnected);
 
-            string blockHashSource = null;
-            byte[] startKeySource = null;
+            byte[]? startKeySource = null;
 
             List<(string, string)> allPages = new();
 
             while (true)
             {
-                var page = await client.GetAllStoragePagedAsync(module, startKeySource, 1000, blockHashSource, token);
+                var page = await client.GetAllStoragePagedAsync(moduleMethod[0], moduleMethod.Length == 2 ? moduleMethod[1] : null, startKeySource, 1000, blockHash, token);
                 if (page == null || page.Count == 0)
                 {
                     break;
                 }
 
                 allPages.AddRange(page);
-                startKeySource = Utils.HexToByteArray(page.Last().Item1);
+                startKeySource = Utils.HexToByteArray(page[page.Count - 1].Item1);
             }
 
             Log.Information("{0}: Parsed {1} entries!", "Target", allPages.Count);
@@ -145,9 +150,14 @@ namespace Ajuna.StorageTools
         {
             var batches = Generic.BuildChunksWithLinqAndYield(allPagesSource, 1000);
 
-            var targetClient = new TargetClient(url, 100);
+            var targetClient = new TargetClient(url, NetworkType.Live, 100);
             await targetClient.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Target", url, targetClient.IsConnected);
+
+            targetClient.ExtrinsicManager.ExtrinsicUpdated += (s, e) =>
+            {
+                Log.Debug("{0}: ExtrinsicUpdated: {1}", "Target", e.TransactionEvent);
+            };
 
             for (int i = 0; i < batches.Count(); i++)
             {
@@ -172,8 +182,8 @@ namespace Ajuna.StorageTools
                 var setStorage = new BaseVec<BaseTuple<BaseVec<U8>, BaseVec<U8>>>();
                 setStorage.Create(baseTupleList.ToArray());
 
-                var call = new Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
-                call.Create(Substrate.AjunaSolo.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
+                var call = new Substrate.TestNode.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
+                call.Create(Substrate.TestNode.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
 
                 var enumCall = new EnumRuntimeCall();
                 enumCall.Create(RuntimeCall.System, call);
@@ -187,7 +197,8 @@ namespace Ajuna.StorageTools
                     break;
                 }
 
-                while (targetClient.ExtrinsicManger.PreInblock.Count() > 25)
+                //while (targetClient.ExtrinsicManager.PreInblock.Count() > 25)
+                while (targetClient.ExtrinsicManager.PreInblock.Any())
                 {
                     Log.Information("{0}: waiting on extrinsic to be in block.", "Target");
                     await Task.Delay(10000);
