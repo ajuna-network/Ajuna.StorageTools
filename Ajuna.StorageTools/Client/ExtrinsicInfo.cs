@@ -15,7 +15,7 @@ namespace Substrate.Integration.Client
     /// <summary>
     /// Extrinsic Info, class that holds all information about an extrinsic
     /// </summary>
-    public class SourceExtrinsicInfo
+    public class ExtrinsicInfo
     {
         /// <summary>
         /// Current blockchain transaction event information
@@ -91,7 +91,7 @@ namespace Substrate.Integration.Client
         /// Extrinsic info constructor
         /// </summary>
         /// <param name="extrinsicType"></param>
-        public SourceExtrinsicInfo(string extrinsicType)
+        public ExtrinsicInfo(string extrinsicType)
         {
             ExtrinsicType = extrinsicType;
             Created = DateTime.UtcNow;

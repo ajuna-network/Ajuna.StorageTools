@@ -7,8 +7,8 @@ using Substrate.Integration.Helper;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Types.Base;
 using Substrate.NetApi.Model.Types.Primitive;
-using Substrate.TestNode.NET.NetApiExt.Generated.Model.bajun_runtime;
-using Substrate.TestNode.NET.NetApiExt.Generated.Storage;
+using Substrate.Bajun.NET.NetApiExt.Generated.Model.bajun_runtime;
+using Substrate.Bajun.NET.NetApiExt.Generated.Storage;
 
 namespace Ajuna.StorageTools
 {
@@ -60,11 +60,12 @@ namespace Ajuna.StorageTools
 //                new string [] {"AwesomeAvatars" },
 //                new string [] {"System", "Account" },
                 new string [] { "Identity" },
+                new string [] { "XcmpQueue" },
             };
 
             string sourceUrl = config["node:source"];
 
-            var client = new SourceClient(sourceUrl, NetworkType.Live, 100);
+            var client = new BaseClient(sourceUrl, NetworkType.Live, 100);
             await client.ConnectAsync(true, true, token);
             var block = await client.SubstrateClient.Chain.GetBlockAsync();
             var blockHash = block.Block.Header.ParentHash.Value;
@@ -90,7 +91,7 @@ namespace Ajuna.StorageTools
 
         private static async Task<List<(string, string)>> GetStorageOfSourceAsync(string url, string[] moduleMethod, string? blockHash, CancellationToken token)
         {
-            var client = new SourceClient(url, NetworkType.Live, 100);
+            var client = new BaseClient(url, NetworkType.Live, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Source", url, client.IsConnected);
 
@@ -119,7 +120,7 @@ namespace Ajuna.StorageTools
 
         private static async Task<List<(string, string)>> GetStorageOfTargetAsync(string url, string[] moduleMethod, string? blockHash, CancellationToken token)
         {
-            var client = new TargetClient(url, NetworkType.Live, 100);
+            var client = new BaseClient(url, NetworkType.Live, 100);
             await client.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Target", url, client.IsConnected);
 
@@ -150,7 +151,7 @@ namespace Ajuna.StorageTools
         {
             var batches = Generic.BuildChunksWithLinqAndYield(allPagesSource, 1000);
 
-            var targetClient = new TargetClient(url, NetworkType.Live, 100);
+            var targetClient = new BaseClient(url, NetworkType.Live, 100);
             await targetClient.ConnectAsync(true, true, token);
             Log.Information("{0}: Connected to {1}: {2}", "Target", url, targetClient.IsConnected);
 
@@ -182,15 +183,15 @@ namespace Ajuna.StorageTools
                 var setStorage = new BaseVec<BaseTuple<BaseVec<U8>, BaseVec<U8>>>();
                 setStorage.Create(baseTupleList.ToArray());
 
-                var call = new Substrate.TestNode.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
-                call.Create(Substrate.TestNode.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
+                var call = new Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
+                call.Create(Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
 
                 var enumCall = new EnumRuntimeCall();
                 enumCall.Create(RuntimeCall.System, call);
 
                 var extrinsic = SudoCalls.Sudo(enumCall);
 
-                var subscriptionId = await targetClient.GenericExtrinsicAsync(TargetClient.Alice, "SetStorage", extrinsic, 100, token);
+                var subscriptionId = await targetClient.GenericExtrinsicAsync(BaseClient.Alice, "SetStorage", extrinsic, 100, token);
                 if (subscriptionId == null)
                 {
                     Log.Warning("{0}: subscriptionId is null.", "Target");

@@ -10,12 +10,12 @@ namespace Substrate.Integration.Client
     /// </summary>
     /// <param name="subscriptionId"></param>
     /// <param name="queueInfo"></param>
-    public delegate void SourceExtrinsicUpdateEvent(string subscriptionId, SourceExtrinsicInfo queueInfo);
+    public delegate void SourceExtrinsicUpdateEvent(string subscriptionId, ExtrinsicInfo queueInfo);
 
     /// <summary>
     /// Extrinsic Manager
     /// </summary>
-    public class SourceExtrinsicManager
+    public class ExtrinsicManager
     {
         /// <summary>
         /// Reteintation time in seconds
@@ -30,22 +30,22 @@ namespace Substrate.Integration.Client
         /// <summary>
         /// Running extrinsics
         /// </summary>
-        public IEnumerable<SourceExtrinsicInfo> Running => _data.Values.Where(p => !p.IsCompleted);
+        public IEnumerable<ExtrinsicInfo> Running => _data.Values.Where(p => !p.IsCompleted);
 
         /// <summary>
         /// Pre in block extrinsics
         /// </summary>
-        public IEnumerable<SourceExtrinsicInfo> PreInblock => _data.Values.Where(p => !p.IsInBlock && !p.IsCompleted);
+        public IEnumerable<ExtrinsicInfo> PreInblock => _data.Values.Where(p => !p.IsInBlock && !p.IsCompleted);
 
-        private readonly Dictionary<string, SourceExtrinsicInfo> _data;
+        private readonly Dictionary<string, ExtrinsicInfo> _data;
 
         /// <summary>
         /// Extrinisic Manager
         /// </summary>
         /// <param name="client"></param>
-        public SourceExtrinsicManager(SubstrateClientExt client)
+        public ExtrinsicManager(SubstrateClientExt client)
         {
-            _data = new Dictionary<string, SourceExtrinsicInfo>();
+            _data = new Dictionary<string, ExtrinsicInfo>();
 
             ExtrinsicUpdated += OnExtrinsicUpdated;
         }
@@ -57,7 +57,7 @@ namespace Substrate.Integration.Client
         /// <param name="extrinsicType"></param>
         public void Add(string subscription, string extrinsicType)
         {
-            _data.Add(subscription, new SourceExtrinsicInfo(extrinsicType));
+            _data.Add(subscription, new ExtrinsicInfo(extrinsicType));
         }
 
         /// <summary>
@@ -65,9 +65,9 @@ namespace Substrate.Integration.Client
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public SourceExtrinsicInfo Get(string id)
+        public ExtrinsicInfo Get(string id)
         {
-            if (!_data.TryGetValue(id, out SourceExtrinsicInfo queueInfo))
+            if (!_data.TryGetValue(id, out ExtrinsicInfo queueInfo))
             {
                 Log.Debug("QueueInfo not available for subscriptionId {id}", id);
                 return null;
@@ -83,9 +83,9 @@ namespace Substrate.Integration.Client
         /// <param name="extrinsicUpdate"></param>
         public void UpdateExtrinsicInfo(string subscriptionId, TransactionEventInfo extrinsicUpdate)
         {
-            if (!_data.TryGetValue(subscriptionId, out SourceExtrinsicInfo queueInfo) || queueInfo == null)
+            if (!_data.TryGetValue(subscriptionId, out ExtrinsicInfo queueInfo) || queueInfo == null)
             {
-                queueInfo = new SourceExtrinsicInfo("Unknown");
+                queueInfo = new ExtrinsicInfo("Unknown");
             }
 
             queueInfo.Update(extrinsicUpdate);
@@ -138,7 +138,7 @@ namespace Substrate.Integration.Client
         /// <param name="allExtrinsicEvents"></param>
         internal void UpdateExtrinsicEvents(string subscriptionId, IEnumerable<EventRecord> allExtrinsicEvents)
         {
-            if (!_data.TryGetValue(subscriptionId, out SourceExtrinsicInfo queueInfo))
+            if (!_data.TryGetValue(subscriptionId, out ExtrinsicInfo queueInfo))
             {
                 return;
             }
@@ -155,7 +155,7 @@ namespace Substrate.Integration.Client
         /// <param name="errorMsg"></param>
         internal void UpdateExtrinsicError(string subscriptionId, string errorMsg)
         {
-            if (!_data.TryGetValue(subscriptionId, out SourceExtrinsicInfo queueInfo))
+            if (!_data.TryGetValue(subscriptionId, out ExtrinsicInfo queueInfo))
             {
                 return;
             }
@@ -171,7 +171,7 @@ namespace Substrate.Integration.Client
         /// <param name="subscriptionId"></param>
         /// <param name="queueInfo"></param>
         /// <exception cref="NotImplementedException"></exception>
-        private void OnExtrinsicUpdated(string subscriptionId, SourceExtrinsicInfo queueInfo)
+        private void OnExtrinsicUpdated(string subscriptionId, ExtrinsicInfo queueInfo)
         {
             Log.Debug("{name}[{id}] updated {state}",
                 queueInfo.ExtrinsicType,

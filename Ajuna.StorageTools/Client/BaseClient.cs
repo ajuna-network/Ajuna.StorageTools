@@ -17,7 +17,7 @@ using System.ComponentModel.Design;
 
 namespace Ajuna.StorageTools.Client
 {
-    public class SourceClient
+    public class BaseClient
     {
         private readonly int _maxConcurrentCalls;
 
@@ -28,12 +28,12 @@ namespace Ajuna.StorageTools.Client
         /// <summary>
         /// Alice account
         /// </summary>
-        public static Account Alice => Account.Build(KeyType.Sr25519, MiniSecretAlice.ExpandToSecret().ToBytes(), MiniSecretAlice.GetPair().Public.Key);
+        public static Account Alice => Account.Build(KeyType.Sr25519, MiniSecretAlice.ExpandToSecret().ToEd25519Bytes(), MiniSecretAlice.GetPair().Public.Key);
 
         /// <summary>
         /// Extrinsic manager, used to manage extrinsic subscriptions and the corresponding states.
         /// </summary>
-        public SourceExtrinsicManager ExtrinsicManager { get; }
+        public ExtrinsicManager ExtrinsicManager { get; }
 
         /// <summary>
         /// Subscription manager, used to manage subscriptions of storage elements.
@@ -61,7 +61,7 @@ namespace Ajuna.StorageTools.Client
         /// <param name="url"></param>
         /// <param name="networkType"></param>
         /// <param name="maxConcurrentCalls"></param>
-        public SourceClient(string url, NetworkType networkType, int maxConcurrentCalls = 10)
+        public BaseClient(string url, NetworkType networkType, int maxConcurrentCalls = 10)
         {
             if (networkType == NetworkType.Host || networkType == NetworkType.Test)
             {
@@ -76,7 +76,7 @@ namespace Ajuna.StorageTools.Client
 
             SubstrateClient = new SubstrateClientExt(new Uri(url), _chargeTypeDefault);
 
-            ExtrinsicManager = new SourceExtrinsicManager(SubstrateClient);
+            ExtrinsicManager = new ExtrinsicManager(SubstrateClient);
 
             SubscriptionManager = new SubscriptionManager();
         }
