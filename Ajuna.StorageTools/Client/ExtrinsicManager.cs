@@ -1,6 +1,6 @@
 ﻿using Serilog;
-using Substrate.Bajun.NET.NetApiExt.Generated;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system;
+using Substrate.Ajuna.NET.NetApiExt.Generated;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_system;
 using Substrate.NetApi.Model.Rpc;
 
 namespace Substrate.Integration.Client

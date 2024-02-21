@@ -1,8 +1,8 @@
-﻿using Substrate.Bajun.NET.NetApiExt.Generated.Model.bajun_runtime;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_support.dispatch;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.sp_arithmetic;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.sp_runtime;
+﻿using Substrate.Ajuna.NET.NetApiExt.Generated.Model.ajuna_runtime;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_support.dispatch;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_system;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.sp_arithmetic;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.sp_runtime;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Rpc;
 using Substrate.NetApi.Model.Types.Base;
@@ -150,12 +150,12 @@ namespace Substrate.Integration.Client
             }
         }
 
-        public bool SystemExtrinsicEvent(out Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.Event? systemExtrinsicEvent, out string errorMsg)
+        public bool SystemExtrinsicEvent(out Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.Event? systemExtrinsicEvent, out string errorMsg)
         {
             systemExtrinsicEvent = null;
             errorMsg = null;
 
-            if (!AllEvents(RuntimeEvent.System, out IEnumerable<Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumEvent> allEnumEvents))
+            if (!AllEvents(RuntimeEvent.System, out IEnumerable<Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumEvent> allEnumEvents))
             {
                 return false;
             }
@@ -168,10 +168,10 @@ namespace Substrate.Integration.Client
 
             switch (systemEnumEvent.Value)
             {
-                case Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.Event.ExtrinsicSuccess:
+                case Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.Event.ExtrinsicSuccess:
                     break;
 
-                case Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.Event.ExtrinsicFailed:
+                case Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.Event.ExtrinsicFailed:
                     var systemEnumEventData = (BaseTuple<EnumDispatchError, DispatchInfo>)systemEnumEvent.Value2;
                     var enumDispatchError = (EnumDispatchError)systemEnumEventData.Value[0];
                     errorMsg = MessageFromDispatchError(enumDispatchError);

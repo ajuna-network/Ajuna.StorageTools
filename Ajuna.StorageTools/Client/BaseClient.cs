@@ -1,9 +1,9 @@
 ﻿using Substrate.NET.Schnorrkel.Keys;
 using Serilog;
 using StreamJsonRpc;
-using Substrate.Bajun.NET.NetApiExt.Generated;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system;
-using Substrate.Bajun.NET.NetApiExt.Generated.Storage;
+using Substrate.Ajuna.NET.NetApiExt.Generated;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_system;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Storage;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Extrinsics;
 using Substrate.NetApi.Model.Types;

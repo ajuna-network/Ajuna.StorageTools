@@ -7,8 +7,8 @@ using Substrate.Integration.Helper;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Types.Base;
 using Substrate.NetApi.Model.Types.Primitive;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.bajun_runtime;
-using Substrate.Bajun.NET.NetApiExt.Generated.Storage;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.ajuna_runtime;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Storage;
 
 namespace Ajuna.StorageTools
 {
@@ -58,7 +58,7 @@ namespace Ajuna.StorageTools
         {
             var modules = new List<string[]> {
 //                new string [] {"AwesomeAvatars" },
-//                new string [] {"System", "Account" },
+                new string [] {"System", "Account" },
                 new string [] { "Identity" },
                 new string [] { "XcmpQueue" },
             };
@@ -183,8 +183,8 @@ namespace Ajuna.StorageTools
                 var setStorage = new BaseVec<BaseTuple<BaseVec<U8>, BaseVec<U8>>>();
                 setStorage.Create(baseTupleList.ToArray());
 
-                var call = new Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
-                call.Create(Substrate.Bajun.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
+                var call = new Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.EnumCall();
+                call.Create(Substrate.Ajuna.NET.NetApiExt.Generated.Model.frame_system.pallet.Call.set_storage, setStorage);
 
                 var enumCall = new EnumRuntimeCall();
                 enumCall.Create(RuntimeCall.System, call);

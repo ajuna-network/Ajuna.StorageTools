@@ -1,5 +1,5 @@
-﻿using Substrate.Bajun.NET.NetApiExt.Generated.Model.primitive_types;
-using Substrate.Bajun.NET.NetApiExt.Generated.Model.sp_core.crypto;
+﻿using Substrate.Ajuna.NET.NetApiExt.Generated.Model.primitive_types;
+using Substrate.Ajuna.NET.NetApiExt.Generated.Model.sp_core.crypto;
 using Substrate.NetApi;
 using Substrate.NetApi.Model.Types;
 using Substrate.NetApi.Model.Types.Base;
