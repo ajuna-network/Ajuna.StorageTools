@@ -57,9 +57,12 @@ namespace Ajuna.StorageTools
         private static async Task MainAsync(IConfigurationRoot config, CancellationToken token)
         {
             var modules = new List<string[]> {
-//                new string [] {"AwesomeAvatars" },
-//                new string [] {"System", "Account" },
-                new string [] { "Identity" },
+        //        new string [] { "System", "Account" },
+        //        new string [] { "Identity" },
+        //        new string [] { "Scheduler" },
+        //        new string [] { "Preimage" },
+        //        new string [] { "PolkadotXcm" },
+                new string [] { "AwesomeAvatars" },
             };
 
             string sourceUrl = config["node:source"];

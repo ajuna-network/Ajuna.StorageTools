@@ -125,9 +125,12 @@ namespace Substrate.Integration.Client
                 Log.Debug("Extrinsic {id} completed with {state}", subscriptionId, queueInfo.TransactionEvent);
             }
 
-            var removeKeys = _data.Where(p => p.Value.TimeElapsed > RetentationTimeSec && p.Value.IsCompleted).Select(p => p.Key)
-                      .ToList(); // ToList materializes the query here
-            Log.Debug("Remove {count} completed extrinsics, after {time}", removeKeys.Count(), RetentationTimeSec);
+            var removeKeys = _data
+                .Where(p => p.Value.TimeElapsed > RetentationTimeSec && p.Value.IsCompleted)
+                .Select(p => p.Key)
+                .ToList(); // ToList materializes the query here
+
+            Log.Debug("Remove {count} completed extrinsics, after {time}", removeKeys.Count, RetentationTimeSec);
             foreach (var key in removeKeys)
             {
                 _data.Remove(key);
